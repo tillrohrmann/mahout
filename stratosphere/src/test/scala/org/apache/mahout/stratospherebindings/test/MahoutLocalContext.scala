@@ -15,15 +15,32 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.stratospherebindings
+package org.apache.mahout.stratospherebindings.test
 
-import eu.stratosphere.api.java.ExecutionEnvironment
+import org.scalatest.Suite
+import org.apache.mahout.test.MahoutSuite
 import org.apache.mahout.math.drm.DistributedContext
+import org.apache.mahout.stratospherebindings._
 
-class StratosphereDistributedContext(val env: ExecutionEnvironment) extends DistributedContext {
-  val engine = new StratosphereEngine(this)
+trait MahoutLocalContext extends MahoutSuite with LoggerConfiguration {
+  this: Suite =>
 
-  def close(){
-    // nothing to do for Stratosphere
+  protected implicit var mahoutContext: DistributedContext = _
+
+  override protected def beforeEach() {
+    super.beforeEach()
+
+    mahoutContext = mahoutLocalStratosphereContext()
+  }
+
+  override protected def afterEach() {
+    if(mahoutContext != null){
+      try{
+        mahoutContext.close()
+      } finally {
+        mahoutContext = null
+      }
+    }
+    super.afterEach()
   }
 }

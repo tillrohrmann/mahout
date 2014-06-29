@@ -17,28 +17,28 @@
 
 package org.apache.mahout.stratospherebindings.blas
 
-import org.apache.mahout.math.drm.logical.OpAtA
 import org.scalatest.FunSuite
+import org.apache.mahout.math.scalabindings._
+import RLikeOps._
+import org.apache.mahout.math.drm._
+import org.apache.mahout.math.drm.logical.OpAt
 import org.apache.mahout.stratospherebindings.test.MahoutLocalContext
 
-/** Tests for {@link XtX} */
-class AtASuite extends FunSuite with MahoutLocalContext {
-
-//  test("AtA slim") {
+/** Tests for A' algorithms */
+class AtSuite extends FunSuite with MahoutLocalContext {
 //
-//    val inCoreA = dense((1, 2), (2, 3))
-//    val drmA = drmParallelize(inCoreA)
+//  test("At") {
+//    val inCoreA = dense((1, 2, 3), (2, 3, 4), (3, 4, 5))
+//    val A = drmParallelize(m = inCoreA, numPartitions = 2)
 //
-//    val operator = new OpAtA[Int](A = drmA)
-//    val inCoreAtA = AtA.at_a_slim(operator = operator, srcRdd = drmA.rdd)
-//    println(inCoreAtA)
+//    val op = new OpAt(A)
+//    val AtDrm = new CheckpointedDrmSpark(rdd = At.at(op, srcA = A), _nrow = op.nrow, _ncol = op.ncol)
+//    val inCoreAt = AtDrm.collect
+//    val inCoreControlAt = inCoreA.t
 //
-//    val expectedAtA = inCoreA.t %*% inCoreA
-//    println(expectedAtA)
+//    println(inCoreAt)
+//    assert((inCoreAt - inCoreControlAt).norm < 1E-5)
 //
-//    assert(expectedAtA === inCoreAtA)
 //
 //  }
-
-
 }

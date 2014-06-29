@@ -15,15 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.stratospherebindings
+package org.apache.mahout.stratospherebindings.test
 
-import eu.stratosphere.api.java.ExecutionEnvironment
-import org.apache.mahout.math.drm.DistributedContext
+import org.scalatest.Suite
+import org.apache.log4j.{Level, Logger}
 
-class StratosphereDistributedContext(val env: ExecutionEnvironment) extends DistributedContext {
-  val engine = new StratosphereEngine(this)
+trait LoggerConfiguration extends org.apache.mahout.test.LoggerConfiguration {
+  this: Suite =>
 
-  def close(){
-    // nothing to do for Stratosphere
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    Logger.getLogger("org.apache.mahout.stratospherebindings").setLevel(Level.DEBUG);
   }
+
 }

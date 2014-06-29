@@ -15,15 +15,8 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.stratospherebindings
+package org.apache.mahout.stratospherebindings.blas
 
-import eu.stratosphere.api.java.ExecutionEnvironment
-import org.apache.mahout.math.drm.DistributedContext
+object AinCoreB {
 
-class StratosphereDistributedContext(val env: ExecutionEnvironment) extends DistributedContext {
-  val engine = new StratosphereEngine(this)
-
-  def close(){
-    // nothing to do for Stratosphere
-  }
 }
