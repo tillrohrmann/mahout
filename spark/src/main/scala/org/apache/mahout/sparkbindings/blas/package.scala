@@ -18,13 +18,54 @@
 package org.apache.mahout.sparkbindings
 
 import scala.reflect.ClassTag
+import org.apache.mahout.sparkbindings.drm.{CheckpointedDrmSpark, DrmRddInput}
+import org.apache.spark.SparkContext._
+import org.apache.mahout.math._
+import org.apache.mahout.math.drm._
+import scalabindings._
+import RLikeOps._
 
 /**
- * This package contains distributed algorithms that distributed matrix expression optimizer picks
+ * This validation contains distributed algorithms that distributed matrix expression optimizer picks
  * from.
  */
 package object blas {
 
   implicit def drmRdd2ops[K:ClassTag](rdd:DrmRdd[K]):DrmRddOps[K] = new DrmRddOps[K](rdd)
+
+  private[mahout] def fixIntConsistency(op: DrmLike[Int], src: DrmRdd[Int]): DrmRdd[Int] = {
+
+    if (op.canHaveMissingRows) {
+
+      val rdd = src
+      val sc = rdd.sparkContext
+      val dueRows = safeToNonNegInt(op.nrow)
+      val dueCols = op.ncol
+
+      // Compute the fix.
+      sc
+
+          // Bootstrap full key set
+          .parallelize(0 until dueRows, numSlices = rdd.partitions.size max 1)
+
+          // Enable PairedFunctions
+          .map(_ -> Unit)
+
+          // Cogroup with all rows
+          .cogroup(other = rdd)
+
+          // Filter out out-of-bounds
+          .filter { case (key, _) => key >= 0 && key < dueRows}
+
+          // Coalesce and output RHS
+          .map { case (key, (seqUnit, seqVec)) =>
+        val acc = seqVec.headOption.getOrElse(new SequentialAccessSparseVector(dueCols))
+        val vec = if (seqVec.size > 0) (acc /: seqVec.tail)(_ + _) else acc
+        key -> vec
+      }
+
+    } else src
+
+  }
 
 }

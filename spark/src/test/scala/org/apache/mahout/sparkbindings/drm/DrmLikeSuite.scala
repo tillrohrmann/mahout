@@ -23,37 +23,19 @@ import scalabindings._
 import drm._
 import RLikeOps._
 import RLikeDrmOps._
-import org.apache.mahout.sparkbindings.test.MahoutLocalContext
+import org.apache.mahout.sparkbindings.test.DistributedSparkSuite
 
 
-/**
- * DRMLike tests
- */
-class DrmLikeSuite extends FunSuite with MahoutLocalContext {
+/** DRMLike tests -- just run common DRM tests in Spark. */
+class DrmLikeSuite extends FunSuite with DistributedSparkSuite with DrmLikeSuiteBase {
 
-
-  test("DRM DFS i/o (local)") {
-
-    val uploadPath = "UploadedDRM"
-
+  test("drmParallellize produces drm with no missing rows") {
     val inCoreA = dense((1, 2, 3), (3, 4, 5))
-    val drmA = drmParallelize(inCoreA)
+    val drmA = drmParallelize(inCoreA, numPartitions = 2)
 
-    drmA.writeDRM(path = uploadPath)
-
-    println(inCoreA)
-
-    // Load back from hdfs
-    val drmB = drmFromHDFS(path = uploadPath)
-
-    // Collect back into in-core
-    val inCoreB = drmB.collect
-
-    // Print out to see what it is we collected:
-    println(inCoreB)
-
+    drmA.canHaveMissingRows shouldBe false
   }
-  
+
   test("DRM blockify dense") {
 
     val inCoreA = dense((1, 2, 3), (3, 4, 5))
@@ -82,21 +64,5 @@ class DrmLikeSuite extends FunSuite with MahoutLocalContext {
         keys -> block
     }).norm should be < 1e-4
   }
-
-  test("DRM parallelizeEmpty") {
-
-    val drmEmpty = drmParallelizeEmpty(100, 50)
-
-    // collect back into in-core
-    val inCoreEmpty = drmEmpty.collect
-
-    //print out to see what it is we collected:
-    println(inCoreEmpty)
-    printf("drm nrow:%d, ncol:%d\n", drmEmpty.nrow, drmEmpty.ncol)
-    printf("in core nrow:%d, ncol:%d\n", inCoreEmpty.nrow, inCoreEmpty.ncol)
-
-
-  }
-
 
 }

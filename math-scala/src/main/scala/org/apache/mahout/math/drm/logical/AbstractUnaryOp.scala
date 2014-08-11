@@ -26,11 +26,12 @@ abstract class AbstractUnaryOp[A: ClassTag, K: ClassTag]
 
   protected[drm] var A: DrmLike[A]
 
-  protected[mahout] lazy val context: DistributedContext = A.context
+  lazy val context: DistributedContext = A.context
 
   def classTagA: ClassTag[A] = implicitly[ClassTag[A]]
 
   def classTagK: ClassTag[K] = implicitly[ClassTag[K]]
 
+  override protected[mahout] lazy val canHaveMissingRows: Boolean = A.canHaveMissingRows
 
 }

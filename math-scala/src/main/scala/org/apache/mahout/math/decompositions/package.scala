@@ -28,6 +28,15 @@ package object decompositions {
 
   // ================ In-core decompositions ===================
 
+  /**
+   * In-core SSVD algorithm.
+   *
+   * @param a input matrix A
+   * @param k request SSVD rank
+   * @param p oversampling parameter
+   * @param q number of power iterations
+   * @return (U,V,s)
+   */
   def ssvd(a: Matrix, k: Int, p: Int = 15, q: Int = 0) = SSVD.ssvd(a, k, p, q)
 
   /**
@@ -50,7 +59,6 @@ package object decompositions {
   def spca(a: Matrix, k: Int, p: Int = 15, q: Int = 0) =
     SSVD.spca(a = a, k = k, p = p, q = q)
 
-
   // ============== Distributed decompositions ===================
 
   /**
@@ -62,36 +70,42 @@ package object decompositions {
    * It also guarantees that Q is partitioned exactly the same way (and in same key-order) as A, so
    * their RDD should be able to zip successfully.
    */
-  def dqrThin[K: ClassTag](A: DrmLike[K], checkRankDeficiency: Boolean = true): (DrmLike[K], Matrix) =
-    DQR.dqrThin(A, checkRankDeficiency)
+  def dqrThin[K: ClassTag](drmA: DrmLike[K], checkRankDeficiency: Boolean = true): (DrmLike[K], Matrix) =
+    DQR.dqrThin(drmA, checkRankDeficiency)
 
   /**
    * Distributed Stochastic Singular Value decomposition algorithm.
    *
-   * @param A input matrix A
+   * @param drmA input matrix A
    * @param k request SSVD rank
    * @param p oversampling parameter
    * @param q number of power iterations
    * @return (U,V,s). Note that U, V are non-checkpointed matrices (i.e. one needs to actually use them
    *         e.g. save them to hdfs in order to trigger their computation.
    */
-  def dssvd[K: ClassTag](A: DrmLike[K], k: Int, p: Int = 15, q: Int = 0):
-  (DrmLike[K], DrmLike[Int], Vector) = DSSVD.dssvd(A, k, p, q)
+  def dssvd[K: ClassTag](drmA: DrmLike[K], k: Int, p: Int = 15, q: Int = 0):
+  (DrmLike[K], DrmLike[Int], Vector) = DSSVD.dssvd(drmA, k, p, q)
 
   /**
    * Distributed Stochastic PCA decomposition algorithm. A logical reflow of the "SSVD-PCA options.pdf"
    * document of the MAHOUT-817.
    *
-   * @param A input matrix A
+   * @param drmA input matrix A
    * @param k request SSVD rank
    * @param p oversampling parameter
    * @param q number of power iterations (hint: use either 0 or 1)
    * @return (U,V,s). Note that U, V are non-checkpointed matrices (i.e. one needs to actually use them
    *         e.g. save them to hdfs in order to trigger their computation.
    */
-  def dspca[K: ClassTag](A: DrmLike[K], k: Int, p: Int = 15, q: Int = 0):
-  (DrmLike[K], DrmLike[Int], Vector) = DSPCA.dspca(A, k, p, q)
+  def dspca[K: ClassTag](drmA: DrmLike[K], k: Int, p: Int = 15, q: Int = 0):
+  (DrmLike[K], DrmLike[Int], Vector) = DSPCA.dspca(drmA, k, p, q)
 
+  /** Result for distributed ALS-type two-component factorization algorithms */
+  type FactorizationResult[K] = ALS.Result[K]
+
+  /** Result for distributed ALS-type two-component factorization algorithms, in-core matrices */
+  type FactorizationResultInCore = ALS.InCoreResult
+  
   /**
    * Run ALS.
    * <P>
@@ -106,7 +120,7 @@ package object decompositions {
    * whichever earlier.
    * <P>
    *
-   * @param drmInput The input matrix
+   * @param drmA The input matrix
    * @param k required rank of decomposition (number of cols in U and V results)
    * @param convergenceThreshold stop sooner if (rmse[i-1] - rmse[i])/rmse[i - 1] is less than this
    *                             value. If <=0 then we won't compute RMSE and use convergence test.
@@ -115,13 +129,13 @@ package object decompositions {
    * @tparam K row key type of the input (100 is probably more than enough)
    * @return { @link org.apache.mahout.math.drm.decompositions.ALS.Result}
    */
-  def als[K: ClassTag](
-      drmInput: DrmLike[K],
+  def dals[K: ClassTag](
+      drmA: DrmLike[K],
       k: Int = 50,
       lambda: Double = 0.0,
       maxIterations: Int = 10,
       convergenceThreshold: Double = 0.10
-      ): ALS.Result[K] =
-    ALS.als(drmInput, k, lambda, maxIterations, convergenceThreshold)
+      ): FactorizationResult[K] =
+    ALS.dals(drmA, k, lambda, maxIterations, convergenceThreshold)
 
 }

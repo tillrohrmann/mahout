@@ -28,7 +28,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>mahout-spark</artifactId>
+  <artifactId>mahout-spark_2.10</artifactId>
   <name>Mahout Spark bindings</name>
   <description>
     Mahout Bindings for Apache Spark
@@ -81,6 +81,27 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+
+      <!-- create core job dependencies jar -->
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>job</id>
+              <phase>package</phase>
+              <goals>
+                <goal>single</goal>
+              </goals>
+              <configuration>
+                <descriptors>
+                  <descriptor>src/main/assembly/job.xml</descriptor>
+                </descriptors>
+              </configuration>
+            </execution>
+          </executions>
       </plugin>
 
       <!-- create test jar so other modules can reuse the math test utility classes. -->
@@ -145,6 +166,7 @@
           <reportsDirectory>${project.build.directory}/scalatest-reports</reportsDirectory>
           <junitxml>.</junitxml>
           <filereports>WDF TestSuite.txt</filereports>
+          <argLine>-Xmx1024m</argLine>
         </configuration>
         <executions>
           <execution>
@@ -263,9 +285,16 @@
 
   <dependencies>
 
+    <!-- spark stuff - need to put this first to use spark's mahout dependencies in tests -->
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-core_${scala.major}</artifactId>
+      <version>${spark.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.mahout</groupId>
-      <artifactId>mahout-math-scala</artifactId>
+      <artifactId>mahout-math-scala_${scala.major}</artifactId>
     </dependency>
 
     <dependency>
@@ -281,18 +310,18 @@
 
     <dependency>
       <groupId>org.apache.mahout</groupId>
-      <artifactId>mahout-math-scala</artifactId>
+      <artifactId>mahout-math-scala_${scala.major}</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
 
 
     <!--  3rd-party -->
-    <!-- spark stuff -->
+
     <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-core_${scala.major}</artifactId>
-      <version>${spark.version}</version>
+      <groupId>com.github.scopt</groupId>
+      <artifactId>scopt_2.10</artifactId>
+      <version>3.2.0</version>
     </dependency>
 
     <!-- scala stuff -->

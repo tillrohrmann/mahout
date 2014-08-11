@@ -29,7 +29,7 @@ import math._
 import org.apache.mahout.common.RandomUtils
 
 /** Simple ALS factorization algotithm. To solve, use train() method. */
-object ALS {
+private[math] object ALS {
 
   private val log = Logger.getLogger(ALS.getClass)
 
@@ -46,8 +46,13 @@ object ALS {
     def toTuple = (drmU, drmV, iterationsRMSE)
   }
 
+  /** Result class for in-core results */
+  class InCoreResult(val inCoreU: Matrix, inCoreV: Matrix, val iterationsRMSE: Iterable[Double]) {
+    def toTuple = (inCoreU, inCoreV, iterationsRMSE)
+  }
+
   /**
-   * Run ALS.
+   * Run Distributed ALS.
    * <P>
    *
    * Example:
@@ -60,7 +65,7 @@ object ALS {
    * whichever earlier.
    * <P>
    *
-   * @param drmInput The input matrix
+   * @param drmA The input matrix
    * @param k required rank of decomposition (number of cols in U and V results)
    * @param convergenceThreshold stop sooner if (rmse[i-1] - rmse[i])/rmse[i - 1] is less than this
    *                             value. If <=0 then we won't compute RMSE and use convergence test.
@@ -69,8 +74,8 @@ object ALS {
    * @tparam K row key type of the input (100 is probably more than enough)
    * @return { @link org.apache.mahout.math.drm.decompositions.ALS.Result}
    */
-  def als[K: ClassTag](
-      drmInput: DrmLike[K],
+  def dals[K: ClassTag](
+      drmA: DrmLike[K],
       k: Int = 50,
       lambda: Double = 0.0,
       maxIterations: Int = 10,
@@ -80,9 +85,7 @@ object ALS {
     assert(convergenceThreshold < 1.0, "convergenceThreshold")
     assert(maxIterations >= 1, "maxIterations")
 
-
-    val drmA = drmInput
-    val drmAt = drmInput.t
+    val drmAt = drmA.t
 
     // Initialize U and V so that they are identically distributed to A or A'
     var drmU = drmA.mapBlock(ncol = k) {
@@ -101,7 +104,7 @@ object ALS {
     while (!stop && i < maxIterations) {
 
       // Alternate. This is really what ALS is.
-      if ( drmV != null) drmV.uncache()
+      if (drmV != null) drmV.uncache()
       drmV = (drmAt %*% drmU %*% solve(drmU.t %*% drmU -: diag(lambda, k))).checkpoint()
 
       drmU.uncache()

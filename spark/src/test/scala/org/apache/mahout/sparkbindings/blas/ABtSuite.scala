@@ -17,7 +17,7 @@
 
 package org.apache.mahout.sparkbindings.blas
 
-import org.apache.mahout.sparkbindings.test.MahoutLocalContext
+import org.apache.mahout.sparkbindings.test.DistributedSparkSuite
 import org.scalatest.FunSuite
 import org.apache.mahout.math.scalabindings._
 import org.apache.mahout.math.drm._
@@ -28,17 +28,17 @@ import org.apache.spark.SparkContext._
 import org.apache.mahout.math.drm.logical.OpABt
 
 /** Tests for AB' operator algorithms */
-class ABtSuite extends FunSuite with MahoutLocalContext {
+class ABtSuite extends FunSuite with DistributedSparkSuite {
 
   test("ABt") {
     val inCoreA = dense((1, 2, 3), (2, 3, 4), (3, 4, 5))
     val inCoreB = dense((3, 4, 5), (5, 6, 7))
-    val A = drmParallelize(m = inCoreA, numPartitions = 3)
-    val B = drmParallelize(m = inCoreB, numPartitions = 2)
+    val drmA = drmParallelize(m = inCoreA, numPartitions = 3)
+    val drmB = drmParallelize(m = inCoreB, numPartitions = 2)
 
-    val op = new OpABt(A, B)
+    val op = new OpABt(drmA, drmB)
 
-    val drm = new CheckpointedDrmSpark(ABt.abt(op, srcA = A, srcB = B), op.nrow, op.ncol)
+    val drm = new CheckpointedDrmSpark(ABt.abt(op, srcA = drmA, srcB = drmB), op.nrow, op.ncol)
 
     printf("AB' num partitions = %d.\n", drm.rdd.partitions.size)
 

@@ -15,14 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.cf
+package org.apache.mahout.math.cf
 
 import org.apache.mahout.math._
 import scalabindings._
 import RLikeOps._
 import drm._
 import RLikeDrmOps._
-import org.apache.mahout.sparkbindings._
 import scala.collection.JavaConversions._
 import org.apache.mahout.math.stats.LogLikelihood
 import collection._
@@ -75,12 +74,14 @@ object CooccurrenceAnalysis extends Serializable {
       val bcastInteractionsPerThingB = drmBroadcast(drmB.numNonZeroElementsPerColumn)
 
       // Compute cross-co-occurrence matrix B'A
-      val drmBtA = drmB.t %*% drmA
+      // pferrel: yikes, this is the wrong order, a big change! so you know who to blame
+      // used to be val drmBtA = drmB.t %*% drmA, which is the wrong order
+      val drmAtB = drmA.t %*% drmB
 
-      val drmIndicatorsBtA = computeIndicators(drmBtA, numUsers, maxInterestingItemsPerThing,
-        bcastInteractionsPerThingB, bcastInteractionsPerItemA)
+      val drmIndicatorsAtB = computeIndicators(drmAtB, numUsers, maxInterestingItemsPerThing,
+        bcastInteractionsPerItemA, bcastInteractionsPerThingB)
 
-      indicatorMatrices = indicatorMatrices :+ drmIndicatorsBtA
+      indicatorMatrices = indicatorMatrices :+ drmIndicatorsAtB
 
       drmB.uncache()
     }
@@ -96,7 +97,7 @@ object CooccurrenceAnalysis extends Serializable {
    * Compute loglikelihood ratio
    * see http://tdunning.blogspot.de/2008/03/surprise-and-coincidence.html for details
    **/
-  def loglikelihoodRatio(numInteractionsWithA: Long, numInteractionsWithB: Long,
+  def logLikelihoodRatio(numInteractionsWithA: Long, numInteractionsWithB: Long,
                          numInteractionsWithAandB: Long, numInteractions: Long) = {
 
     val k11 = numInteractionsWithAandB
@@ -105,6 +106,7 @@ object CooccurrenceAnalysis extends Serializable {
     val k22 = numInteractions - numInteractionsWithA - numInteractionsWithB + numInteractionsWithAandB
 
     LogLikelihood.logLikelihoodRatio(k11, k12, k21, k22)
+
   }
 
   def computeIndicators(drmBtA: DrmLike[Int], numUsers: Int, maxInterestingItemsPerThing: Int,
@@ -131,9 +133,14 @@ object CooccurrenceAnalysis extends Serializable {
             // exclude co-occurrences of the item with itself
             if (crossCooccurrence || thingB != thingA) {
               // Compute loglikelihood ratio
-              val llrRatio = loglikelihoodRatio(numInteractionsB(thingB).toLong, numInteractionsA(thingA).toLong,
+              val llr = logLikelihoodRatio(numInteractionsB(thingB).toLong, numInteractionsA(thingA).toLong,
                 cooccurrences.toLong, numUsers)
-              val candidate = thingA -> llrRatio
+
+              val candidate = thingA -> llr
+
+              // matches legacy hadoop code and maps values to range (0..1)
+              // val tLLR = 1.0 - (1.0 / (1.0 + llr))
+              //val candidate = thingA -> tLLR
 
               // Enqueue item with score, if belonging to the top-k
               if (topItemsPerThing.size < maxInterestingItemsPerThing) {

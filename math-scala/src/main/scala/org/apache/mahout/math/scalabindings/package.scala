@@ -17,9 +17,7 @@
 
 package org.apache.mahout.math
 
-import org.apache.mahout.math._
 import org.apache.mahout.math.solver.EigenDecomposition
-import org.apache.mahout.math.decompositions.SSVD
 
 /**
  * Mahout matrices and vectors' scala syntactic sugar
@@ -130,15 +128,26 @@ package object scalabindings {
         case t: Product => t.productIterator.map(_.asInstanceOf[Number].doubleValue()).toArray
         case t: Vector => Array.tabulate(t.length)(t(_))
         case t: Array[Double] => t
-        case t: Iterable[Double] => t.toArray
+        case t: Iterable[_] =>
+          t.head match {
+            case ss: Double => t.asInstanceOf[Iterable[Double]].toArray
+            case vv: Vector =>
+              val m = new DenseMatrix(t.size, t.head.asInstanceOf[Vector].length)
+              t.asInstanceOf[Iterable[Vector]].view.zipWithIndex.foreach {
+                case (v, idx) => m(idx, ::) := v
+              }
+              return m
+          }
         case t: Array[Array[Double]] => if (rows.size == 1)
           return new DenseMatrix(t)
         else
           throw new IllegalArgumentException(
             "double[][] data parameter can be the only argument for dense()")
-        case t:Array[Vector] =>
-          val m = new DenseMatrix(t.size,t.head.length)
-          t.view.zipWithIndex.foreach({case(v,idx) => m(idx,::) := v})
+        case t: Array[Vector] =>
+          val m = new DenseMatrix(t.size, t.head.length)
+          t.view.zipWithIndex.foreach {
+            case (v, idx) => m(idx, ::) := v
+          }
           return m
         case _ => throw new IllegalArgumentException("unsupported type in the inline Matrix initializer")
       }
@@ -149,11 +158,14 @@ package object scalabindings {
   /**
    * Default initializes are always row-wise.
    * create a sparse,
-   * e.g.
+   * e.g. {{{
+   *
    * m = sparse(
-   * (0,5)::(9,3)::Nil,
-   * (2,3.5)::(7,8)::Nil
+   *   (0,5)::(9,3)::Nil,
+   *   (2,3.5)::(7,8)::Nil
    * )
+   * 
+   * }}}
    *
    * @param rows
    * @return
