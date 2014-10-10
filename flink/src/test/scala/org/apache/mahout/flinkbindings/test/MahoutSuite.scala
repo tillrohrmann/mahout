@@ -17,30 +17,14 @@
 
 package org.apache.mahout.flinkbindings.test
 
-import org.scalatest.Suite
-import org.apache.mahout.test.MahoutSuite
-import org.apache.mahout.math.drm.DistributedContext
-import org.apache.mahout.flinkbindings._
+import org.apache.mahout.common.RandomUtils
+import org.scalatest.{BeforeAndAfterEach, Suite, Matchers}
 
-trait MahoutLocalContext extends MahoutSuite with LoggerConfiguration {
+trait MahoutSuite extends BeforeAndAfterEach with LoggerConfiguration with Matchers {
   this: Suite =>
 
-  protected implicit var mahoutContext: DistributedContext = _
-
-  override protected def beforeEach() {
+  override protected def beforeEach(): Unit ={
     super.beforeEach()
-
-    mahoutContext = mahoutLocalFlinkContext()
-  }
-
-  override protected def afterEach() {
-    if(mahoutContext != null){
-      try{
-        mahoutContext.close()
-      } finally {
-        mahoutContext = null
-      }
-    }
-    super.afterEach()
+    RandomUtils.useTestSeed()
   }
 }

@@ -18,14 +18,28 @@
 package org.apache.mahout.flinkbindings.test
 
 import org.scalatest.Suite
-import org.apache.log4j.{Level, Logger}
+import org.apache.mahout.math.drm.DistributedContext
+import org.apache.mahout.flinkbindings._
 
-trait LoggerConfiguration extends org.apache.mahout.test.LoggerConfiguration {
+trait MahoutLocalContext extends MahoutSuite with LoggerConfiguration {
   this: Suite =>
 
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
-    Logger.getLogger("org.apache.mahout.flinkbindings").setLevel(Level.DEBUG);
+  protected implicit var mahoutContext: DistributedContext = _
+
+  override protected def beforeEach() {
+    super.beforeEach()
+
+    mahoutContext = mahoutLocalFlinkContext()
   }
 
+  override protected def afterEach() {
+    if(mahoutContext != null){
+      try{
+        mahoutContext.close()
+      } finally {
+        mahoutContext = null
+      }
+    }
+    super.afterEach()
+  }
 }

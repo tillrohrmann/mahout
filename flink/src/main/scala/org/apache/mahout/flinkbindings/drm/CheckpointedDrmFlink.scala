@@ -44,31 +44,12 @@ class CheckpointedDrmFlink[K: ClassTag](val ds: DrmDS[K],
   }
 
   override def writeDRM(path: String) {
-    val keyTag = implicitly[ClassTag[K]]
-    val I = classTag[Int]
-    val S = classTag[String]
-    val L = classTag[Long]
-
-    implicit val key2WritableFunc: (K) => Writable = keyTag match {
-      case I => (x: K) => new IntWritable(x.asInstanceOf[Int])
-      case S => (x: K) => new Text(x.asInstanceOf[String])
-      case L => (x: K) => new LongWritable(x.asInstanceOf[Long])
-      case _ =>
-        if(classOf[Writable].isAssignableFrom(keyTag.runtimeClass)) (x:K) => x.asInstanceOf[Writable]
-        else throw new IllegalArgumentException(s"Cannot convert type $keyTag to Writable.")
-    }
     val jobConf = new JobConf()
     val outputFormat = new HadoopOutputFormat[Writable, VectorWritable](new SequenceFileOutputFormat[Writable,
       VectorWritable](), jobConf)
 
-    class Convert2Writable[T <: Vector] extends MapFunction[JT2[K, T], JT2[Writable, VectorWritable]]{
-      override def map(x: JT2[K, T]): JT2[Writable, VectorWritable] = {
-        JT(key2WritableFunc(x._1), new VectorWritable(x._2))
-      }
-    }
-
     val wvw = ds.map{
-      new Convert2Writable[Vector]
+      new Convert2Writable[Vector, K](Convert2Writable.createMappingFunction[K])
     }
 
     wvw.output(outputFormat)
@@ -84,6 +65,28 @@ class CheckpointedDrmFlink[K: ClassTag](val ds: DrmDS[K],
   override def checkpoint(cacheHint: CacheHint.CacheHint = CacheHint.MEMORY_ONLY): CheckpointedDrmFlink[K] = {
     this
   }
+}
 
+class Convert2Writable[T<: Vector, K](val mappingFunction: K => Writable) extends MapFunction[JT2[K, T], JT2[Writable,
+  VectorWritable]]{
 
+  override def map(x: JT2[K, T]) = {
+    JT(mappingFunction(x._1), new VectorWritable(x._2))
+  }
+}
+
+object Convert2Writable{
+  val I = classTag[Int]
+  val S = classTag[String]
+  val L = classTag[Long]
+
+  def createMappingFunction[K: ClassTag] = {
+    val tag = implicitly[ClassTag[K]]
+    tag match {
+      case I => (x: K) => new IntWritable(x.asInstanceOf[Int])
+      case S => (x: K) => new Text(x.asInstanceOf[String])
+      case L => (x: K) => new LongWritable(x.asInstanceOf[Long])
+      case _ => throw new IllegalArgumentException(s"Cannot convert type $tag to Writable.")
+    }
+  }
 }
