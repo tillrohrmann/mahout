@@ -1,7 +1,6 @@
 package org.apache.mahout.flinkbindings
 
 import scala.reflect.ClassTag
-
 import org.apache.mahout.math.Matrix
 import org.apache.mahout.math.Vector
 import org.apache.mahout.math.drm.BCast
@@ -14,9 +13,9 @@ import org.apache.mahout.math.indexeddataset.DefaultIndexedDatasetElementReadSch
 import org.apache.mahout.math.indexeddataset.DefaultIndexedDatasetReadSchema
 import org.apache.mahout.math.indexeddataset.IndexedDataset
 import org.apache.mahout.math.indexeddataset.Schema
-
 import com.google.common.collect.BiMap
 import com.google.common.collect.HashBiMap
+import org.apache.flink.api.scala.DataSet
 
 object FlinkEngine extends DistributedEngine {
 
@@ -25,6 +24,11 @@ object FlinkEngine extends DistributedEngine {
     null
   }
 
+  def translate[K: ClassTag](oper: DrmLike[K]): DataSet[K] = {
+    null
+  }
+  
+  
   /** Engine-specific colSums implementation based on a checkpoint. */
   override def colSums[K: ClassTag](drm: CheckpointedDrm[K]): Vector = {
     null
