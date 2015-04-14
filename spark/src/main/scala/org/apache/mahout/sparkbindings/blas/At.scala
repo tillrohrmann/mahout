@@ -21,15 +21,15 @@ import org.apache.mahout.sparkbindings.drm.DrmRddInput
 import org.apache.mahout.math.scalabindings._
 import RLikeOps._
 import org.apache.spark.SparkContext._
-import org.apache.mahout.math.{DenseVector, Vector, SequentialAccessSparseVector}
+import org.apache.mahout.math.{ DenseVector, Vector, SequentialAccessSparseVector }
 import org.apache.mahout.math.drm.logical.OpAt
 
 /** A' algorithms */
 object At {
 
   def at(
-      operator: OpAt,
-      srcA: DrmRddInput[Int]): DrmRddInput[Int] = at_nograph(operator = operator, srcA = srcA)
+    operator: OpAt,
+    srcA: DrmRddInput[Int]): DrmRddInput[Int] = at_nograph(operator = operator, srcA = srcA)
 
   /**
    * Non-GraphX spark implementation of transposition.
@@ -46,29 +46,29 @@ object At {
     // Validity of this conversion must be checked at logical operator level.
     val nrow = operator.nrow.toInt
     val atRdd = drmRdd
-        // Split
-        .flatMap({
-      case (keys, blockA) =>
-        (0 until blockA.ncol).view.map(blockCol => {
-          // Compute sparse vector. This should be quick if we assign values siquentially.
-          val colV: Vector = new SequentialAccessSparseVector(ncol)
-          keys.view.zipWithIndex.foreach({
-            case (row, blockRow) => colV(row) = blockA(blockRow, blockCol)
+      // Split
+      .flatMap({
+        case (keys, blockA) =>
+          (0 until blockA.ncol).view.map(blockCol => {
+            // Compute sparse vector. This should be quick if we assign values siquentially.
+            val colV: Vector = new SequentialAccessSparseVector(ncol)
+            keys.view.zipWithIndex.foreach({
+              case (row, blockRow) => colV(row) = blockA(blockRow, blockCol)
+            })
+
+            blockCol -> colV
           })
+      })
 
-          blockCol -> colV
-        })
-    })
+      // Regroup
+      .groupByKey(numPartitions = numPartitions)
 
-        // Regroup
-        .groupByKey(numPartitions = numPartitions)
-
-        // Reduce
-        .map({
-      case (key, vSeq) =>
-        var v: Vector = vSeq.reduce(_ + _)
-        key -> v
-    }).densify()
+      // Reduce
+      .map({
+        case (key, vSeq) =>
+          var v: Vector = vSeq.reduce(_ + _)
+          key -> v
+      }).densify()
 
     new DrmRddInput(rowWiseSrc = Some(ncol -> atRdd))
   }

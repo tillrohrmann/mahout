@@ -8,9 +8,10 @@ import org.apache.mahout.flinkbindings.FlinkDistributedContext
 import org.apache.mahout.math.Matrix
 import org.apache.mahout.math.drm._
 import org.apache.mahout.math.scalabindings._
+
 import RLikeOps._
-import org.apache.mahout.flinkbindings.DrmDataSet
-import org.apache.mahout.flinkbindings.BlockifiedDrmDataSet
+import org.apache.mahout.flinkbindings._
+
 import org.apache.flink.api.common.functions.MapPartitionFunction
 import org.apache.mahout.math.Vector
 import java.lang.Iterable

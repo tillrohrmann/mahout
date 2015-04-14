@@ -7,9 +7,11 @@ import org.apache.mahout.flinkbindings.drm.BlockifiedFlinkDrm
 import org.apache.mahout.flinkbindings.drm.RowsFlinkDrm
 import org.apache.mahout.math.drm._
 import org.slf4j.LoggerFactory
-import org.apache.mahout.flinkbindings.drm.CheckpointedFlinkDrm
 import scala.reflect.ClassTag
 import org.apache.mahout.flinkbindings.drm.FlinkDrm
+import org.apache.mahout.flinkbindings.drm.CheckpointedFlinkDrm
+import org.apache.mahout.flinkbindings.drm.FlinkDrm
+import org.apache.mahout.flinkbindings.drm.RowsFlinkDrm
 
 package object flinkbindings {
 
@@ -28,6 +30,14 @@ package object flinkbindings {
     new FlinkDistributedContext(env)
   implicit def unwrapContext(ctx: FlinkDistributedContext): ExecutionEnvironment = ctx.env
 
-  implicit def wrapDrm[K: ClassTag](drm: CheckpointedDrm[K]): FlinkDrm[K] = new CheckpointedFlinkDrm(drm)
+  private[flinkbindings] implicit def castCheckpointedDrm[K: ClassTag](drm: CheckpointedDrm[K]): CheckpointedFlinkDrm[K] = {
+    assert(drm.isInstanceOf[CheckpointedFlinkDrm[K]], "it must be a Flink-backed matrix")
+    drm.asInstanceOf[CheckpointedFlinkDrm[K]]
+  }
+
+  private[flinkbindings] implicit def checkpointeDrmToFlinkDrm[K: ClassTag](cp: CheckpointedDrm[K]): FlinkDrm[K] = {
+    val flinkDrm = castCheckpointedDrm(cp)
+    new RowsFlinkDrm[K](flinkDrm.ds, flinkDrm.ncol)
+  }
 
 }
