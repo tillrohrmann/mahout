@@ -21,7 +21,7 @@ trait DistributedFlinkSuit extends DistributedMahoutSuite { this: Suite =>
 
   override def afterEach() {
     super.afterEach()
-    env.execute("Mahout Flink Binding Test Suite")
+//    env.execute("Mahout Flink Binding Test Suite")
   }
 
 }

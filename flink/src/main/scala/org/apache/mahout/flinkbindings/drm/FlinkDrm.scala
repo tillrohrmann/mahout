@@ -8,10 +8,8 @@ import org.apache.mahout.flinkbindings.FlinkDistributedContext
 import org.apache.mahout.math.Matrix
 import org.apache.mahout.math.drm._
 import org.apache.mahout.math.scalabindings._
-
 import RLikeOps._
 import org.apache.mahout.flinkbindings._
-
 import org.apache.flink.api.common.functions.MapPartitionFunction
 import org.apache.mahout.math.Vector
 import java.lang.Iterable
@@ -19,6 +17,10 @@ import scala.collection.JavaConverters._
 import org.apache.mahout.math.DenseMatrix
 import scala.reflect.ClassTag
 import org.apache.mahout.math.SparseRowMatrix
+import scala.reflect.ClassTag
+import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.scala.codegen.TypeInformationGen
+import org.apache.flink.api.java.typeutils.TypeExtractor
 
 trait FlinkDrm[K] {
   def executionEnvironment: ExecutionEnvironment
@@ -37,6 +39,8 @@ class RowsFlinkDrm[K: ClassTag](val ds: DrmDataSet[K], val ncol: Int) extends Fl
   def isBlockified = false
 
   def blockify(): BlockifiedFlinkDrm[K] = {
+    val ncolLocal = ncol
+    val classTag = implicitly[ClassTag[K]]
 
     val parts = ds.mapPartition(new MapPartitionFunction[DrmTuple[K], (Array[K], Matrix)] {
       def mapPartition(values: Iterable[DrmTuple[K]], out: Collector[(Array[K], Matrix)]): Unit = {
@@ -46,12 +50,12 @@ class RowsFlinkDrm[K: ClassTag](val ds: DrmDataSet[K], val ncol: Int) extends Fl
         val isDense = vectors.head.isDense
 
         if (isDense) {
-          val matrix = new DenseMatrix(vectors.size, ncol)
+          val matrix = new DenseMatrix(vectors.size, ncolLocal)
           vectors.zipWithIndex.foreach { case (vec, idx) => matrix(idx, ::) := vec }
-          out.collect((keys.toArray[K], matrix))
+          out.collect((keys.toArray(classTag), matrix))
         } else {
-          val matrix = new SparseRowMatrix(vectors.size, ncol, vectors.toArray)
-          out.collect((keys.toArray[K], matrix))
+          val matrix = new SparseRowMatrix(vectors.size, ncolLocal, vectors.toArray)
+          out.collect((keys.toArray(classTag), matrix))
         }
       }
     })

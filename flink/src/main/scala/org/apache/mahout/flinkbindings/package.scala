@@ -26,6 +26,12 @@ package object flinkbindings {
    */
   type BlockifiedDrmDataSet[K] = DataSet[BlockifiedDrmTuple[K]]
 
+  
+  implicit def wrapMahoutContext(context: DistributedContext): FlinkDistributedContext = {
+    assert(context.isInstanceOf[FlinkDistributedContext], "it must be FlinkDistributedContext")
+    context.asInstanceOf[FlinkDistributedContext]
+  }
+
   implicit def wrapContext(env: ExecutionEnvironment): FlinkDistributedContext =
     new FlinkDistributedContext(env)
   implicit def unwrapContext(ctx: FlinkDistributedContext): ExecutionEnvironment = ctx.env

@@ -44,25 +44,29 @@ class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
   def checkpoint(cacheHint: CacheHint.CacheHint): CheckpointedDrm[K] = this
 
   def collect: Matrix = {
-    val intRowIndices = keyClassTag == implicitly[ClassTag[Int]]
-
-    val cols = ncol
-    val rows = safeToNonNegInt(nrow)
-
     val dataJavaList = new ArrayList[DrmTuple[K]]
     val outputFormat = new LocalCollectionOutputFormat[DrmTuple[K]](dataJavaList)
     ds.output(outputFormat)
     val data = dataJavaList.asScala
+    ds.getExecutionEnvironment.execute("Checkpointed Flink Drm collect()")
 
-    val m = if (data.forall(_._2.isDense))
+    val isDense = data.forall(_._2.isDense)
+
+    val m = if (isDense) {
+      val cols = data.head._2.size()
+      val rows = data.length
       new DenseMatrix(rows, cols)
-    else
+    } else {
+      val cols = ncol
+      val rows = safeToNonNegInt(nrow)
       new SparseMatrix(rows, cols)
+    }
+
+    val intRowIndices = keyClassTag == implicitly[ClassTag[Int]]
 
     if (intRowIndices)
       data.foreach(t => m(t._1.asInstanceOf[Int], ::) := t._2)
     else {
-
       // assign all rows sequentially
       val d = data.zipWithIndex
       d.foreach(t => m(t._2, ::) := t._1._2)

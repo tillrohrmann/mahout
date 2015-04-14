@@ -9,6 +9,11 @@ import org.apache.mahout.flinkbindings._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.apache.mahout.math.drm.logical.OpAx
+import org.apache.flink.api.common.functions.MapPartitionFunction
+import org.apache.flink.util.Collector
+import java.lang.Iterable
+import org.apache.flink.api.java.ClosureCleaner
+import org.apache.mahout.flinkbindings.drm.CheckpointedFlinkDrm
 
 @RunWith(classOf[JUnitRunner])
 class LATestSuit extends FunSuite with DistributedFlinkSuit { 
@@ -20,6 +25,11 @@ class LATestSuit extends FunSuite with DistributedFlinkSuit {
 
     val opAx = new OpAx(A, x)
     val res = FlinkOpAx.blockifiedBroadcastAx(opAx, A)
+    val drm = new CheckpointedFlinkDrm(res.deblockify.ds)
+    val output = drm.collect
+
+    val b = output(::, 0)
+    assert(b == dvec(8, 11, 14)) 
   }
-  
+
 }
