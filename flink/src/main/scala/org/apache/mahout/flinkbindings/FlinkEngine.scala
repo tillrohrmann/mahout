@@ -26,46 +26,54 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.mahout.math.drm.DrmTuple
 import java.util.Collection
+import org.apache.mahout.flinkbindings.drm.FlinkDrm
+import org.apache.mahout.flinkbindings.blas._
+import org.apache.mahout.math.drm.logical.OpAx
+import org.apache.mahout.flinkbindings.drm.RowsFlinkDrm
 
 object FlinkEngine extends DistributedEngine {
 
   /** Second optimizer pass. Translate previously rewritten logical pipeline into physical engine plan. */
   override def toPhysical[K: ClassTag](plan: DrmLike[K], ch: CacheHint.CacheHint): CheckpointedDrm[K] = {
-    null
+    // Flink-specific Physical Plan translation.
+    val drm = flinkTranslate(plan)
+
+    val newcp = new CheckpointedFlinkDrm(
+      ds = drm.deblockify.ds, // TODO: make it lazy!
+      _nrow = plan.nrow,
+      _ncol = plan.ncol
+//      _cacheStorageLevel = cacheHint2Spark(ch),
+//      partitioningTag = plan.partitioningTag
+    )
+
+    newcp.cache()
   }
 
-  def translate[K: ClassTag](oper: DrmLike[K]): DataSet[K] = {
-    null
+  private def flinkTranslate[K: ClassTag](oper: DrmLike[K]): FlinkDrm[K] = oper match {
+    case op @ OpAx(a, x) => FlinkOpAx.blockifiedBroadcastAx(op, flinkTranslate(a)(op.classTagA))
+    case cp: CheckpointedFlinkDrm[K] => new RowsFlinkDrm(cp.ds, cp.ncol)
+    case _ => ???
   }
+  
+
+  def translate[K: ClassTag](oper: DrmLike[K]): DataSet[K] = ???
 
   /** Engine-specific colSums implementation based on a checkpoint. */
-  override def colSums[K: ClassTag](drm: CheckpointedDrm[K]): Vector = {
-    null
-  }
+  override def colSums[K: ClassTag](drm: CheckpointedDrm[K]): Vector = ???
 
   /** Engine-specific numNonZeroElementsPerColumn implementation based on a checkpoint. */
-  override def numNonZeroElementsPerColumn[K: ClassTag](drm: CheckpointedDrm[K]): Vector = {
-    null
-  }
+  override def numNonZeroElementsPerColumn[K: ClassTag](drm: CheckpointedDrm[K]): Vector = ???
 
   /** Engine-specific colMeans implementation based on a checkpoint. */
-  override def colMeans[K: ClassTag](drm: CheckpointedDrm[K]): Vector = {
-    null
-  }
+  override def colMeans[K: ClassTag](drm: CheckpointedDrm[K]): Vector = ???
 
-  override def norm[K: ClassTag](drm: CheckpointedDrm[K]): Double = {
-    0.0d
-  }
+  override def norm[K: ClassTag](drm: CheckpointedDrm[K]): Double = ???
 
   /** Broadcast support */
-  override def drmBroadcast(v: Vector)(implicit dc: DistributedContext): BCast[Vector] = {
-    null
-  }
+  override def drmBroadcast(v: Vector)(implicit dc: DistributedContext): BCast[Vector] = ???
 
   /** Broadcast support */
-  override def drmBroadcast(m: Matrix)(implicit dc: DistributedContext): BCast[Matrix] = {
-    null
-  }
+  override def drmBroadcast(m: Matrix)(implicit dc: DistributedContext): BCast[Matrix] = ???
 
   /**
    * Load DRM from hdfs (as in Mahout DRM format).
@@ -79,20 +87,17 @@ object FlinkEngine extends DistributedEngine {
   /** Parallelize in-core matrix as spark distributed matrix, using row ordinal indices as data set keys. */
   override def drmParallelizeWithRowIndices(m: Matrix, numPartitions: Int = 1)
                                            (implicit sc: DistributedContext): CheckpointedDrm[Int] = {
-    val parallelDrm = parallelize(m)
-
-    // numPartitions is unused
+    val parallelDrm = parallelize(m, numPartitions)
     new CheckpointedFlinkDrm(ds=parallelDrm, _nrow=m.numRows(), _ncol=m.numCols())
   }
 
-  private[flinkbindings] def parallelize(m: Matrix)
+  private[flinkbindings] def parallelize(m: Matrix, parallelismDegree: Int)
       (implicit sc: DistributedContext): DrmDataSet[Int] = {
-
     val rows = (0 until m.nrow).map(i => (i, m(i, ::)))
     val rowsJava: Collection[DrmTuple[Int]]  = rows.asJava
 
     val dataSetType = TypeExtractor.getForObject(rows.head)
-    sc.env.fromCollection(rowsJava, dataSetType)
+    sc.env.fromCollection(rowsJava, dataSetType).setParallelism(parallelismDegree)
   }
 
   /** Parallelize in-core matrix as spark distributed matrix, using row labels as a data set keys. */

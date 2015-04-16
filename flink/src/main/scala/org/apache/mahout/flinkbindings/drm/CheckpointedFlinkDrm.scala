@@ -35,6 +35,11 @@ class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
 
   def keyClassTag: ClassTag[K] = implicitly[ClassTag[K]]
 
+  def cache() = {
+    // TODO
+    this
+  }
+
   def uncache = ???
 
   // Members declared in org.apache.mahout.math.drm.DrmLike   
