@@ -31,8 +31,16 @@ class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
   lazy val ncol = if (_ncol >= 0) _ncol else computeNCol
 
   protected def computeNRow = ???
-  protected def computeNCol = ???
-
+  protected def computeNCol = ??? /*{
+  TODO: find out how to get one value
+    val max = ds.map(new MapFunction[DrmTuple[K], Int] {
+      def map(value: DrmTuple[K]): Int = value._2.length
+    }).reduce(new ReduceFunction[Int] {
+      def reduce(a1: Int, a2: Int) = Math.max(a1, a2)
+    })
+    
+    max
+  }*/
   def keyClassTag: ClassTag[K] = implicitly[ClassTag[K]]
 
   def cache() = {

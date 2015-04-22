@@ -10,9 +10,11 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.apache.mahout.math.drm.logical.OpAx
 import org.apache.mahout.flinkbindings.drm.CheckpointedFlinkDrm
+import org.apache.mahout.flinkbindings.drm.RowsFlinkDrm
+import org.apache.mahout.math.drm.logical.OpAt
 
 @RunWith(classOf[JUnitRunner])
-class LATestSuit extends FunSuite with DistributedFlinkSuit { 
+class LATestSuit extends FunSuite with DistributedFlinkSuit {
 
   test("Ax") {
     val inCoreA = dense((1, 2, 3), (2, 3, 4), (3, 4, 5))
@@ -25,7 +27,19 @@ class LATestSuit extends FunSuite with DistributedFlinkSuit {
     val output = drm.collect
 
     val b = output(::, 0)
-    assert(b == dvec(8, 11, 14)) 
+    assert(b == dvec(8, 11, 14))
+  }
+
+  test("At") {
+    val inCoreA = dense((1, 2, 3), (2, 3, 4))
+    val A = drmParallelize(m = inCoreA, numPartitions = 2)
+
+    val opAt = new OpAt(A)
+    val res = FlinkOpAt.sparseTrick(opAt, A)
+    val drm = new CheckpointedFlinkDrm(res.deblockify.ds, _nrow=inCoreA.ncol, _ncol=inCoreA.nrow)
+    val output = drm.collect
+
+    assert((output - inCoreA.t).norm < 1e-6)
   }
 
 }

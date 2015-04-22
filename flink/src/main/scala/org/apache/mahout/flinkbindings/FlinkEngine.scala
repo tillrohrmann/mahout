@@ -30,6 +30,7 @@ import org.apache.mahout.flinkbindings.drm.FlinkDrm
 import org.apache.mahout.flinkbindings.blas._
 import org.apache.mahout.math.drm.logical.OpAx
 import org.apache.mahout.flinkbindings.drm.RowsFlinkDrm
+import org.apache.mahout.math.drm.logical.OpAt
 
 object FlinkEngine extends DistributedEngine {
 
@@ -51,6 +52,7 @@ object FlinkEngine extends DistributedEngine {
 
   private def flinkTranslate[K: ClassTag](oper: DrmLike[K]): FlinkDrm[K] = oper match {
     case op @ OpAx(a, x) => FlinkOpAx.blockifiedBroadcastAx(op, flinkTranslate(a)(op.classTagA))
+    case op @ OpAt(a) => FlinkOpAt.sparseTrick(op, flinkTranslate(a)(op.classTagA))
     case cp: CheckpointedFlinkDrm[K] => new RowsFlinkDrm(cp.ds, cp.ncol)
     case _ => ???
   }
