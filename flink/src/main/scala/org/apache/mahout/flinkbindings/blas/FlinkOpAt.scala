@@ -1,23 +1,19 @@
 package org.apache.mahout.flinkbindings.blas
 
 import org.apache.mahout.math.drm.logical.OpAt
-import org.apache.mahout.flinkbindings.DrmDataSet
 import org.apache.mahout.flinkbindings.drm.FlinkDrm
-import org.apache.flink.api.common.functions.FlatMapFunction
+import org.apache.flink.api.scala._
 import org.apache.mahout.math.Matrix
-import scala.reflect.ClassTag
 import org.apache.flink.util.Collector
-import org.apache.mahout.flinkbindings._
 import org.apache.mahout.math._
 import scalabindings._
 import RLikeOps._
-import org.apache.flink.api.common.functions.GroupReduceFunction
+import org.apache.flink.api.common.functions.{FlatMapFunction, GroupReduceFunction}
 import org.apache.mahout.math.drm.DrmTuple
 import java.lang.Iterable
 import scala.collection.JavaConverters._
 import org.apache.mahout.flinkbindings.drm.RowsFlinkDrm
 import org.apache.flink.api.java.functions.KeySelector
-import java.util.ArrayList
 import org.apache.flink.shaded.com.google.common.collect.Lists
 
 /**
@@ -49,21 +45,21 @@ object FlinkOpAt {
       }
     })
 
-    val regrouped = sparseParts.groupBy(new KeySelector[Tuple2[Int, Vector], Integer] {
-      def getKey(tuple: Tuple2[Int, Vector]): Integer = tuple._1
-    })
-
-    val sparseTotal = regrouped.reduceGroup(new GroupReduceFunction[Tuple2[Int, Vector], DrmTuple[Int]] {
-      def reduce(values: Iterable[DrmTuple[Int]], out: Collector[DrmTuple[Int]]): Unit = {
-        val it = Lists.newArrayList(values).asScala
-        val (idx, _) = it.head
-        val vector = it map { case (idx, vec) => vec } reduce (_ + _)
-        out.collect(idx -> vector)
-      }
-    })
+//    val regrouped = sparseParts
+//
+//    val sparseTotal = regrouped.reduceGroup(new GroupReduceFunction[Tuple2[Int, Vector], DrmTuple[Int]] {
+//      def reduce(values: Iterable[DrmTuple[Int]], out: Collector[DrmTuple[Int]]): Unit = {
+//        val it = Lists.newArrayList(values).asScala
+//        val (idx, _) = it.head
+//        val vector = it map { case (idx, vec) => vec } reduce (_ + _)
+//        out.collect(idx -> vector)
+//      }
+//    })
 
     // TODO: densify or not?
-    new RowsFlinkDrm(sparseTotal, ncol)
+//    new RowsFlinkDrm(sparseTotal, ncol)
+
+    null
   }
 
 }

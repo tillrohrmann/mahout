@@ -1,7 +1,7 @@
 package org.apache.mahout.flinkbindings
 
 import scala.reflect.ClassTag
-import org.apache.flink.api.scala.DataSet
+import org.apache.flink.api.scala._
 import org.apache.mahout.flinkbindings._
 import org.apache.mahout.flinkbindings.drm.CheckpointedFlinkDrm
 import org.apache.mahout.math._
@@ -37,7 +37,20 @@ object FlinkEngine extends DistributedEngine {
   /** Second optimizer pass. Translate previously rewritten logical pipeline into physical engine plan. */
   override def toPhysical[K: ClassTag](plan: DrmLike[K], ch: CacheHint.CacheHint): CheckpointedDrm[K] = {
     // Flink-specific Physical Plan translation.
-    val drm = flinkTranslate(plan)
+
+    val classTag = implicitly[ClassTag[K]]
+
+    implicit val tpeInf = if(classTag.runtimeClass.equals(classOf[String])) {
+      createTypeInformation[String]
+    } else if(classTag.runtimeClass.equals(classOf[Int])) {
+      createTypeInformation[Int]
+    } else if(classTag.runtimeClass.equals(classOf[Long])) {
+      createTypeInformation[Long]
+    } else {
+      throw new Exception(s"Type $classTag not supported.")
+    }
+
+    val drm = flinkTranslate(plan)(classTag, tpeInf.asInstanceOf[TypeInformation[K]])
 
     val newcp = new CheckpointedFlinkDrm(
       ds = drm.deblockify.ds, // TODO: make it lazy!
@@ -50,9 +63,9 @@ object FlinkEngine extends DistributedEngine {
     newcp.cache()
   }
 
-  private def flinkTranslate[K: ClassTag](oper: DrmLike[K]): FlinkDrm[K] = oper match {
-    case op @ OpAx(a, x) => FlinkOpAx.blockifiedBroadcastAx(op, flinkTranslate(a)(op.classTagA))
-    case op @ OpAt(a) => FlinkOpAt.sparseTrick(op, flinkTranslate(a)(op.classTagA))
+  private def flinkTranslate[K: ClassTag: TypeInformation](oper: DrmLike[K]): FlinkDrm[K] = oper match {
+    case op @ OpAx(a, x) => FlinkOpAx.blockifiedBroadcastAx(op, flinkTranslate(a))
+//    case op @ OpAt(a) => FlinkOpAt.sparseTrick(op, flinkTranslate(a)(op.classTagA))
     case cp: CheckpointedFlinkDrm[K] => new RowsFlinkDrm(cp.ds, cp.ncol)
     case _ => ???
   }
@@ -96,10 +109,8 @@ object FlinkEngine extends DistributedEngine {
   private[flinkbindings] def parallelize(m: Matrix, parallelismDegree: Int)
       (implicit sc: DistributedContext): DrmDataSet[Int] = {
     val rows = (0 until m.nrow).map(i => (i, m(i, ::)))
-    val rowsJava: Collection[DrmTuple[Int]]  = rows.asJava
 
-    val dataSetType = TypeExtractor.getForObject(rows.head)
-    sc.env.fromCollection(rowsJava, dataSetType).setParallelism(parallelismDegree)
+    sc.env.fromCollection(rows).setParallelism(parallelismDegree)
   }
 
   /** Parallelize in-core matrix as spark distributed matrix, using row labels as a data set keys. */

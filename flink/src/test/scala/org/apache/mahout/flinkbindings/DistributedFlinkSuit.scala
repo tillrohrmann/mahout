@@ -12,7 +12,6 @@ trait DistributedFlinkSuit extends DistributedMahoutSuite { this: Suite =>
   
   def initContext() {
     env = ExecutionEnvironment.getExecutionEnvironment
-    mahoutCtx = env
   }
 
   override def beforeEach() {

@@ -1,8 +1,8 @@
 package org.apache.mahout.flinkbindings.drm
 
 import org.apache.flink.api.common.functions.FlatMapFunction
-import org.apache.flink.api.java.DataSet
-import org.apache.flink.api.java.ExecutionEnvironment
+import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.scala._
 import org.apache.flink.util.Collector
 import org.apache.mahout.flinkbindings.FlinkDistributedContext
 import org.apache.mahout.math.Matrix
@@ -18,9 +18,6 @@ import org.apache.mahout.math.DenseMatrix
 import scala.reflect.ClassTag
 import org.apache.mahout.math.SparseRowMatrix
 import scala.reflect.ClassTag
-import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.api.scala.codegen.TypeInformationGen
-import org.apache.flink.api.java.typeutils.TypeExtractor
 
 trait FlinkDrm[K] {
   def executionEnvironment: ExecutionEnvironment
@@ -31,7 +28,7 @@ trait FlinkDrm[K] {
   def deblockify: RowsFlinkDrm[K]
 }
 
-class RowsFlinkDrm[K: ClassTag](val ds: DrmDataSet[K], val ncol: Int) extends FlinkDrm[K] {
+class RowsFlinkDrm[K: ClassTag: TypeInformation](val ds: DrmDataSet[K], val ncol: Int) extends FlinkDrm[K] {
 
   def executionEnvironment = ds.getExecutionEnvironment
   def context: FlinkDistributedContext = ds.getExecutionEnvironment
@@ -67,7 +64,7 @@ class RowsFlinkDrm[K: ClassTag](val ds: DrmDataSet[K], val ncol: Int) extends Fl
 
 }
 
-class BlockifiedFlinkDrm[K: ClassTag](val ds: BlockifiedDrmDataSet[K], val ncol: Int) extends FlinkDrm[K] {
+class BlockifiedFlinkDrm[K: ClassTag: TypeInformation](val ds: BlockifiedDrmDataSet[K], val ncol: Int) extends FlinkDrm[K] {
 
   def executionEnvironment = ds.getExecutionEnvironment
   def context: FlinkDistributedContext = ds.getExecutionEnvironment
