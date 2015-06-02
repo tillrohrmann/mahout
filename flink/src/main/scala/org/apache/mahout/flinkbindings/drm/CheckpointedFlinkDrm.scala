@@ -22,11 +22,11 @@ import org.apache.flink.api.common.functions.ReduceFunction
 import org.apache.flink.api.java.DataSet
 
 class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
-  private var _nrow: Long = CheckpointedFlinkDrm.UNKNOWN,
-  private var _ncol: Int = CheckpointedFlinkDrm.UNKNOWN,
-  // private val _cacheStorageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
-  override protected[mahout] val partitioningTag: Long = Random.nextLong(),
-  private var _canHaveMissingRows: Boolean = false) extends CheckpointedDrm[K] {
+      private var _nrow: Long = CheckpointedFlinkDrm.UNKNOWN,
+      private var _ncol: Int = CheckpointedFlinkDrm.UNKNOWN,
+      override protected[mahout] val partitioningTag: Long = Random.nextLong(),
+      private var _canHaveMissingRows: Boolean = false
+  ) extends CheckpointedDrm[K] {
 
   lazy val nrow: Long = if (_nrow >= 0) _nrow else computeNRow
   lazy val ncol: Int = if (_ncol >= 0) _ncol else computeNCol
