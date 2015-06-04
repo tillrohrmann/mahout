@@ -17,17 +17,17 @@ import org.apache.mahout.flinkbindings.drm._
 import org.apache.mahout.flinkbindings.blas._
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.common.functions._
+import org.apache.flink.api.common.functions.MapFunction
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.java.io.TypeSerializerInputFormat
 import org.apache.flink.api.common.io.SerializedInputFormat
-import org.apache.hadoop.io.IntWritable
 import org.apache.hadoop.mapred.JobConf
 import org.apache.hadoop.mapred.SequenceFileInputFormat
 import org.apache.hadoop.mapred.FileInputFormat
-import org.apache.hadoop.io.LongWritable
 import org.apache.mahout.flinkbindings.io._
 import org.apache.hadoop.io.Writable
+import org.apache.flink.api.java.tuple.Tuple2
 
 object FlinkEngine extends DistributedEngine {
 
@@ -51,13 +51,13 @@ object FlinkEngine extends DistributedEngine {
 
     val writables = dc.env.createHadoopInput(hadoopInput, classOf[Writable], classOf[VectorWritable], job)
 
-    val res = writables.map(new MapFunction[(Writable, VectorWritable)] {
-      def map(tuple: (Writable, VectorWritable)): (Any, Vector) = tuple match {
-        case (idx, vec) => (unwrapKey(idx), vec.get())
+    val res = writables.map(new MapFunction[Tuple2[Writable, VectorWritable], (Any, Vector)] {
+      def map(tuple: Tuple2[Writable, VectorWritable]): (Any, Vector) = {
+        unwrapKey(tuple.f0) -> tuple.f1
       }
     })
 
-    datasetWrap(res)(metadata.keyClassTag)
+    datasetWrap(res)(metadata.keyClassTag.asInstanceOf[ClassTag[Any]])
   }
 
   override def indexedDatasetDFSRead(src: String, schema: Schema, existingRowIDs: Option[BiDictionary])
