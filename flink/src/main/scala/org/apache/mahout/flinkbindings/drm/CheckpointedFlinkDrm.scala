@@ -1,5 +1,8 @@
 package org.apache.mahout.flinkbindings.drm
 
+import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.typeutils.ResultTypeQueryable
+
 import scala.reflect.ClassTag
 import org.apache.mahout.math.drm._
 import org.apache.mahout.math.scalabindings._
@@ -20,6 +23,7 @@ import scala.collection.JavaConverters._
 import org.apache.flink.api.common.functions.MapFunction
 import org.apache.flink.api.common.functions.ReduceFunction
 import org.apache.flink.api.java.DataSet
+import org.apache.flink.api.scala._
 import org.apache.hadoop.io.Writable
 import org.apache.hadoop.io.IntWritable
 import org.apache.hadoop.io.Text
@@ -32,7 +36,7 @@ import org.apache.hadoop.mapred.FileOutputFormat
 import org.apache.flink.api.java.tuple.Tuple2
 import org.apache.flink.api.java.hadoop.mapred.HadoopOutputFormat
 
-class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
+class CheckpointedFlinkDrm[K: ClassTag: TypeInformation](val ds: DrmDataSet[K],
       private var _nrow: Long = CheckpointedFlinkDrm.UNKNOWN,
       private var _ncol: Int = CheckpointedFlinkDrm.UNKNOWN,
       override protected[mahout] val partitioningTag: Long = Random.nextLong(),
@@ -80,7 +84,8 @@ class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
   def checkpoint(cacheHint: CacheHint.CacheHint): CheckpointedDrm[K] = this
 
   def collect: Matrix = {
-    val data = CheckpointedFlinkDrm.flinkCollect(ds, "Checkpointed Flink Drm collect()")
+    val javaTuple = ds.map(new Mapper[K])
+    val data = javaTuple.collect().asScala.toList.map(x => (x.f0, x.f1))
     val isDense = data.forall(_._2.isDense)
 
     val m = if (isDense) {
@@ -123,6 +128,8 @@ class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
 
     val job = new JobConf
     val sequenceFormat = new SequenceFileOutputFormat[Writable, VectorWritable]
+    job.setOutputKeyClass(classOf[IntWritable])
+    job.setOutputValueClass(classOf[VectorWritable])
     FileOutputFormat.setOutputPath(job, new org.apache.hadoop.fs.Path(path))
 
     val hadoopOutput  = new HadoopOutputFormat(sequenceFormat, job)
@@ -156,12 +163,24 @@ object CheckpointedFlinkDrm {
 
   // needed for backwards compatibility with flink 0.8.1
   def flinkCollect[K](dataset: DataSet[K], jobName: String = "flinkCollect()"): List[K] = {
-    val dataJavaList = new ArrayList[K]
-    val outputFormat = new LocalCollectionOutputFormat[K](dataJavaList)
-    dataset.output(outputFormat)
-    val data = dataJavaList.asScala
-    dataset.getExecutionEnvironment.execute(jobName)
-    data.toList
+    dataset.collect().asScala.toList
+//    val dataJavaList = new ArrayList[K]
+//    val outputFormat = new LocalCollectionOutputFormat[K](dataJavaList)
+//    dataset.output(outputFormat)
+//    val data = dataJavaList.asScala
+//    dataset.getExecutionEnvironment.execute(jobName)
+//    data.toList
+  }
+}
+
+class Mapper[T: TypeInformation] extends MapFunction[(T, Vector), Tuple2[T, Vector]] with ResultTypeQueryable[Tuple2[T, Vector]] {
+  override def getProducedType: TypeInformation[Tuple2[T, Vector]] = {
+    val result = createTypeInformation[Tuple2[T, Vector]]
+
+    result
   }
 
+  override def map(value: (T, Vector)): Tuple2[T, Vector] = {
+    new Tuple2(value._1, value._2)
+  }
 }

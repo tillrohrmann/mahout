@@ -15,11 +15,15 @@ object MillionSongsDataset {
   def main(args: Array[String]): Unit = {
     val env = ExecutionEnvironment.getExecutionEnvironment
     implicit val ctx = new FlinkDistributedContext(env)
+//
+//    val inCoreA = dense((1, 2, 3), (2, 3, 4), (3, 4, 5))
+//    val A = drmParallelize(m = inCoreA, numPartitions = 2)
+//
+//    A.dfsWrite("file:///tmp/flink-dsl/")
 
-    val inCoreA = dense((1, 2, 3), (2, 3, 4), (3, 4, 5))
-    val A = drmParallelize(m = inCoreA, numPartitions = 2)
+    val d = drmDfsRead("file:///tmp/flink-dsl/")
 
-    A.dfsWrite("file://c:/tmp/flink-dsl/")
+    println(d.collect)
 
   }
 

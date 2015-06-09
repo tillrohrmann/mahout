@@ -28,5 +28,4 @@ class FlinkDistributedContext(val env: ExecutionEnvironment) extends Distributed
   override def close() {
     // TODO
   }
-
 }

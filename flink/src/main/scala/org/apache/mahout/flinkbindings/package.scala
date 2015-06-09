@@ -1,5 +1,7 @@
 package org.apache.mahout
 
+import org.apache.flink.api.common.typeinfo.TypeInformation
+
 import scala.reflect.ClassTag
 import org.slf4j.LoggerFactory
 import org.apache.flink.api.java.DataSet
@@ -58,7 +60,7 @@ package object flinkbindings {
     null
   }
 
-  def datasetWrap[K: ClassTag](dataset: DataSet[(K, Vector)]): CheckpointedDrm[K] = {
+  def datasetWrap[K: ClassTag: TypeInformation](dataset: DataSet[(K, Vector)]): CheckpointedDrm[K] = {
     new CheckpointedFlinkDrm[K](dataset)
   }
 
